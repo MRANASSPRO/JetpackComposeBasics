@@ -1,11 +1,13 @@
 package com.mranasspro.composebasics1
 
+import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,6 +15,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.mranasspro.composebasics1.ui.theme.ComposeBasics1Theme
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,9 +37,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MyApp() {
-    //val scrollState = rememberScrollState()
-
-    var shouldShowOnboarding by remember { mutableStateOf(true) }
+    //Instead of using remember you can use rememberSaveable. This will save each state surviving configuration changes (such as rotations) and process death.
+    var shouldShowOnboarding by rememberSaveable { mutableStateOf(true) }
     if (shouldShowOnboarding) {
         OnboardingScreen(onContinueClicked = { shouldShowOnboarding = false })
     } else {
@@ -58,9 +67,9 @@ fun OnboardingScreen(onContinueClicked: () -> Unit) { // a function that returns
 }
 
 @Composable
-private fun Greetings(names: List<String> = listOf("World", "Compose")) {
-    Column(modifier = Modifier.padding(vertical = 4.dp)) {
-        for (name in names) {
+private fun Greetings(names: List<String> = List(1000) { "$it" }) {
+    LazyColumn(modifier = Modifier.padding(vertical = 4.dp)) {
+        items(items = names) { name ->
             Greeting(name = name)
         }
     }
@@ -77,9 +86,17 @@ fun OnboardingPreview() {
 @Composable
 private fun Greeting(name: String) {
 
-    val expanded = remember { mutableStateOf(false) }
+    //val expanded = remember { mutableStateOf(false) }
+    var expanded by rememberSaveable { mutableStateOf(false) } //by keyword instead of = It's a property delegate that saves you from typing .value every time
 
-    val extraPadding = if (expanded.value) 48.dp else 0.dp
+    //val extraPadding = if (expanded.value) 48.dp else 0.dp
+    val extraPadding by animateDpAsState(
+        if (expanded) 48.dp else 0.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        )
+    )
 
     Surface(
         color = MaterialTheme.colors.primary,
@@ -89,20 +106,55 @@ private fun Greeting(name: String) {
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(bottom = extraPadding)
+                    .padding(bottom = extraPadding.coerceAtLeast(0.dp))
+                //.padding(bottom = extraPadding)
             ) {
                 Text(text = "Hello, ")
-                Text(text = name)
+                Text(
+                    text = name, style = MaterialTheme.typography.h4.copy(
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                )
+                if (expanded) {
+                    Text(
+                        text = ("Composem ipsum color sit lazy, " +
+                                "padding theme elit, sed do bouncy. ")
+                            .repeat(4),
+                    )
+                }
             }
-            OutlinedButton(
-                onClick = { expanded.value = !expanded.value }
+            IconButton(
+                onClick = { expanded = !expanded }
+                //onClick = { expanded.value = !expanded.value }
             ) {
-                Text(if (expanded.value) "Show less" else "Show more")
+                Icon(
+                    imageVector = if (expanded) Icons.Filled.ExpandLess
+                    else Icons.Filled.ExpandMore,
+                    contentDescription = if (expanded) {
+                        stringResource(R.string.show_less)
+                    } else {
+                        stringResource(R.string.show_more)
+                    }
+
+                )
+                /*Text(
+                    if (expanded) {
+                        stringResource(R.string.show_less)
+                    } else {
+                        stringResource(R.string.show_more)
+                    }
+                )*/
             }
         }
     }
 }
 
+@Preview(
+    showBackground = true,
+    widthDp = 320,
+    uiMode = UI_MODE_NIGHT_YES,
+    name = "DefaultPreviewDark"
+)
 @Preview(showBackground = true, widthDp = 320)
 @Composable
 fun DefaultPreview() {
